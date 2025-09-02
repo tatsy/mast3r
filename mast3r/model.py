@@ -4,15 +4,14 @@
 # --------------------------------------------------------
 # MASt3R model class
 # --------------------------------------------------------
-import torch
-import torch.nn.functional as F
 import os
 
-from mast3r.catmlp_dpt_head import mast3r_head_factory
+import torch
 
 import mast3r.utils.path_to_dust3r  # noqa
 from dust3r.model import AsymmetricCroCo3DStereo  # noqa
-from dust3r.utils.misc import transpose_to_landscape, is_symmetrized  # noqa
+from dust3r.utils.misc import is_symmetrized, transpose_to_landscape  # noqa
+from mast3r.catmlp_dpt_head import mast3r_head_factory
 
 inf = float('inf')
 
@@ -21,14 +20,14 @@ def load_model(model_path, device, verbose=True):
     if verbose:
         print('... loading model from', model_path)
     ckpt = torch.load(model_path, map_location='cpu', weights_only=False)
-    args = ckpt['args'].model.replace("ManyAR_PatchEmbed", "PatchEmbedDust3R")
+    args = ckpt['args'].model.replace('ManyAR_PatchEmbed', 'PatchEmbedDust3R')
     if 'landscape_only' not in args:
         args = args[:-1] + ', landscape_only=False)'
     else:
-        args = args.replace(" ", "").replace('landscape_only=True', 'landscape_only=False')
-    assert "landscape_only=False" in args
+        args = args.replace(' ', '').replace('landscape_only=True', 'landscape_only=False')
+    assert 'landscape_only=False' in args
     if verbose:
-        print(f"instantiating : {args}")
+        print(f'instantiating : {args}')
     net = eval(args)
     s = net.load_state_dict(ckpt['model'], strict=False)
     if verbose:
@@ -50,9 +49,12 @@ class AsymmetricMASt3R(AsymmetricCroCo3DStereo):
         else:
             return super(AsymmetricMASt3R, cls).from_pretrained(pretrained_model_name_or_path, **kw)
 
-    def set_downstream_head(self, output_mode, head_type, landscape_only, depth_mode, conf_mode, patch_size, img_size, **kw):
-        assert img_size[0] % patch_size == 0 and img_size[
-            1] % patch_size == 0, f'{img_size=} must be multiple of {patch_size=}'
+    def set_downstream_head(
+        self, output_mode, head_type, landscape_only, depth_mode, conf_mode, patch_size, img_size, **kw
+    ):
+        assert img_size[0] % patch_size == 0 and img_size[1] % patch_size == 0, (
+            f'{img_size=} must be multiple of {patch_size=}'
+        )
         self.output_mode = output_mode
         self.head_type = head_type
         self.depth_mode = depth_mode
@@ -79,22 +81,23 @@ def load_dune_mast3r_model(model_path, device, verbose=True):
 
 
 class AsymmetricMASt3RWithDUNEBackbone(torch.nn.Module):
-
-    def __init__(self, dune_backbone_name, mast3r_model_str, landscape_only=True):  # "dune_vitbase_14_448_paper_encoder"
+    def __init__(
+        self, dune_backbone_name, mast3r_model_str, landscape_only=True
+    ):  # "dune_vitbase_14_448_paper_encoder"
         super().__init__()
-        self.dune_backbone = torch.hub.load("naver/dune", dune_backbone_name)
+        self.dune_backbone = torch.hub.load('naver/dune', dune_backbone_name)
         self.register_buffer('imagenet_mean', torch.tensor([0.485, 0.456, 0.406]).float().view(1, 3, 1, 1))
         self.register_buffer('imagenet_std', torch.tensor([0.229, 0.224, 0.225]).float().view(1, 3, 1, 1))
         self.norm = torch.nn.LayerNorm(self.dune_backbone.num_features)
         assert 'landscape_only' not in mast3r_model_str
         self.landscape_only = landscape_only
         if not self.landscape_only:
-            mast3r_model_str = mast3r_model_str[:-1] + f', landscape_only=False)'
+            mast3r_model_str = mast3r_model_str[:-1] + ', landscape_only=False)'
         patch_size = self.dune_backbone.patch_size
         self.patch_size = patch_size
         self.square_ok = True
         if patch_size != 16:
-            assert not "patch_size" in mast3r_model_str, mast3r_model_str
+            assert 'patch_size' not in mast3r_model_str, mast3r_model_str
             assert mast3r_model_str.endswith(')'), mast3r_model_str
             mast3r_model_str = mast3r_model_str[:-1] + f', patch_size={patch_size})'
         self.mast3r = eval(mast3r_model_str)
@@ -134,13 +137,15 @@ class AsymmetricMASt3RWithDUNEBackbone(torch.nn.Module):
         W //= patch_size[0]
         H //= patch_size[1]
         height, width = true_shape.T
-        is_landscape = (width >= height)
+        is_landscape = width >= height
         is_portrait = ~is_landscape
         if self.landscape_only:
             assert W >= H, f'image should be in landscape mode, but got {W=} {H=}'
-            assert H % patch_size[0] == 0, f"Input image height ({H}) is not a multiple of patch size ({patch_size[0]})."
-            assert W % patch_size[1] == 0, f"Input image width ({W}) is not a multiple of patch size ({patch_size[1]})."
-            assert true_shape.shape == (B, 2), f"true_shape has the wrong shape={true_shape.shape}"
+            assert H % patch_size[0] == 0, (
+                f'Input image height ({H}) is not a multiple of patch size ({patch_size[0]}).'
+            )
+            assert W % patch_size[1] == 0, f'Input image width ({W}) is not a multiple of patch size ({patch_size[1]}).'
+            assert true_shape.shape == (B, 2), f'true_shape has the wrong shape={true_shape.shape}'
             if torch.any(is_portrait):
                 x1 = self.dune_backbone.prepare_tokens_with_masks(image[is_landscape])
                 x2 = self.dune_backbone.prepare_tokens_with_masks(image[is_portrait].permute(0, 1, 3, 2))
@@ -148,7 +153,8 @@ class AsymmetricMASt3RWithDUNEBackbone(torch.nn.Module):
                 x[is_landscape] = x1
                 x[is_portrait] = x2
                 pos = image.new_zeros(
-                    (B, x.shape[1] - self.dune_backbone.num_register_tokens - 1, 2), dtype=torch.int64)
+                    (B, x.shape[1] - self.dune_backbone.num_register_tokens - 1, 2), dtype=torch.int64
+                )
                 pos[is_landscape] = self.mast3r.patch_embed.position_getter(1, H, W, pos.device)
                 pos[is_portrait] = self.mast3r.patch_embed.position_getter(1, W, H, pos.device)
             else:
@@ -161,14 +167,13 @@ class AsymmetricMASt3RWithDUNEBackbone(torch.nn.Module):
 
         for blk in self.dune_backbone.blocks[0]:
             x = blk(x)
-        features = x[:, self.dune_backbone.num_register_tokens + 1:, :]
+        features = x[:, self.dune_backbone.num_register_tokens + 1 :, :]
         return features.detach(), pos
 
     @torch.no_grad()
     def _encode_image_pairs(self, img1, img2, true_shape1, true_shape2):
         if img1.shape[-2:] == img2.shape[-2:]:
-            out, pos = self._encode_image(torch.cat((img1, img2), dim=0),
-                                          torch.cat((true_shape1, true_shape2), dim=0))
+            out, pos = self._encode_image(torch.cat((img1, img2), dim=0), torch.cat((true_shape1, true_shape2), dim=0))
             out, out2 = out.chunk(2, dim=0)
             pos, pos2 = pos.chunk(2, dim=0)
         else:
@@ -205,7 +210,7 @@ class AsymmetricMASt3RWithDUNEBackbone(torch.nn.Module):
 
         # combine all ref images into object-centric representation
         dec1, dec2 = self.mast3r._decoder(feat1, pos1, feat2, pos2)
-        with torch.cuda.amp.autocast(enabled=False):
+        with torch.amp.autocast(device_type='cuda', enabled=False):
             res1 = self.mast3r._downstream_head(1, [tok.float() for tok in dec1], shape1)
             res2 = self.mast3r._downstream_head(2, [tok.float() for tok in dec2], shape2)
 

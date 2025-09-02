@@ -1,0 +1,96 @@
+[project]
+name = "mast3r"
+version = "1.0.0"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "einops>=0.8.1",
+  "gradio>=5.44.1",
+  "huggingface-hub[torch]>=0.22",
+  "matplotlib>=3.10.6",
+  "opencv-python>=4.12.0.88",
+  "pyglet<2.0.0",
+  "roma>=1.5.4",
+  "scikit-learn>=1.7.1",
+  "scipy>=1.15.3",
+  "tensorboard>=2.20.0",
+  "tqdm>=4.67.1",
+  "trimesh>=4.8.0",
+  "torch (>=2.6.0,<2.7.0)",
+  "torchvision (>=0.21.0,<0.22.0)",
+  "pillow-heif>=1.1.0",
+  "pyrender>=0.1.45",
+  "kapture>=1.1.10",
+  "kapture-localization>=1.1.10",
+  "numpy-quaternion>=2024.0.10",
+  "poselib>=2.0.5",
+  "pycolmap>=3.12.5",
+  "cython>=3.1.3",
+  "plyfile>=1.1.2",
+]
+
+[dependency-groups]
+dev = ["flake8-pyproject>=1.2.3", "mypy>=1.17.1", "ruff>=0.12.11"]
+
+[tool.uv.sources]
+torch = [
+  { marker = "sys_platform == 'win32'", index = "pytorch-cu124" },
+  { marker = "sys_platform == 'linux'", index = "pytorch-cu124" },
+  { marker = "sys_platform == 'darwin'", index = "pytorch-cpu" },
+]
+
+torchvision = [
+  { marker = "sys_platform == 'win32'", index = "pytorch-cu124" },
+  { marker = "sys_platform == 'linux'", index = "pytorch-cu124" },
+  { marker = "sys_platform == 'darwin'", index = "pytorch-cpu" },
+]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-cu124"
+url = "https://download.pytorch.org/whl/cu124"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-cu126"
+url = "https://download.pytorch.org/whl/cu126"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.format]
+quote-style = "single"
+
+[tool.ruff.lint]
+select = ["E", "W", "F"]
+ignore = []
+fixable = ["ALL"]
+unfixable = []
+
+[tool.ruff.lint.isort]
+length-sort = true
+length-sort-straight = true
+
+[tool.mypy]
+python_version = "3.11"
+follow_imports = "silent"
+plugins = ["numpy.typing.mypy_plugin"]
+disallow_any_generics = true
+strict_optional = true
+check_untyped_defs = true
+allow_redefinition = true
+
+[tool.flake8]
+max-line-length = 120
+ignore = "Q000,E127,E203,E402,W503,W504"
