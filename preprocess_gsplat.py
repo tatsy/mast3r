@@ -1,4 +1,4 @@
-import shutil
+gmport shutil
 import logging
 import argparse
 from pathlib import Path
@@ -165,7 +165,7 @@ def main(args: argparse.Namespace):
     img_txt = sparse_dir / 'images.txt'
     with open(img_txt, mode='w') as f:
         for i in tqdm(range(len(imgs)), desc='Saving COLMAP images'):
-            pose = poses[i]
+            pose = np.linalg.inv(poses[i])
             tv = pose[:3, 3]
             qv = quaternion.from_rotation_matrix(pose[:3, :3])
             name = image_files[i].name
